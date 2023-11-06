@@ -18,7 +18,6 @@ const (
 	version    = "0.1.0"
 	pdEnvToken = "PD_TOKEN"
 
-	pdBaseURL           = "https://foo.pagerduty.com"
 	flagTimestampLayout = "2006-01-02"
 )
 
@@ -124,13 +123,13 @@ func printIncidentsAsMarkdownTable(incidents []pagerduty.Incident) {
 
 	for _, i := range incidents {
 		incidentsForTable = append(incidentsForTable,
-			[]string{fmt.Sprintf("%d", i.Number), i.URL(), i.Description,
+			[]string{fmt.Sprintf("[%d](%s)", i.Number, i.URL()), i.Description,
 				formatter.FormatTimeWithUTCAndLocal(i.CreatedAt),
 				formatter.FormatTimeWithUTCAndLocal(i.ResolvedAt), i.Duration()},
 		)
 	}
 
-	header := []string{"Incident", "Description", "Created", "Resolved", "Duration"}
+	header := []string{"Incident", "Description", "Created", "Last Update", "Duration"}
 
 	text, _ := formatter.RenderMarkdownTable(header, incidentsForTable)
 
