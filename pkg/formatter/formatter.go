@@ -24,6 +24,7 @@ func RenderMarkdownTable(header []string, data [][]string) (string, error) {
 	table.SetHeader(header)
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 	table.SetCenterSeparator("|")
+	table.SetAutoWrapText(false)
 
 	table.AppendBulk(data)
 	table.Render()
