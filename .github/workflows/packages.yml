@@ -16,15 +16,20 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: install dependencies
+      run: |
+        sudo wget https://github.com/jgm/pandoc/releases/download/3.1.11.1/pandoc-3.1.11.1-1-amd64.deb
+        sudo dpkg -i pandoc-3.1.11.1-1-amd64.deb
+        rm -f pandoc-3.1.11.1-1-amd64.deb
+
     - name: create packages
       run: |
         BUILD_GOARCH=amd64 BUILD_GOOS=freebsd make build-standalone
         BUILD_GOARCH=amd64 BUILD_GOOS=linux   make build-standalone
         BUILD_GOARCH=amd64 BUILD_GOOS=darwin  make build-standalone
+        BUILD_GOARCH=arm64 BUILD_GOOS=darwin  make build-standalone
 
     - name: create release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          pd-*
-          checksums.txt
+      run: make github-release
+      env:
+        GH_TOKEN: ${{ github.token }}
