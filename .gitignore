@@ -1,2 +1,4 @@
 bin/*
 pd
+.release_artifacts
+docs/man/pd.1
