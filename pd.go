@@ -15,17 +15,17 @@ import (
 )
 
 const (
-	version    = "0.1.0"
 	pdEnvToken = "PD_TOKEN"
 
 	flagTimestampLayout = "2006-01-02"
 )
 
 var (
-	flags struct {
+	version = "0.1.1"
+	flags   struct {
 		Incidents struct {
 			TeamID string `help:"PagerDuty team ID to get incidents for"`
-			Since  string `help:"time range to get incidents for" default:"168h"`
+			Since  string `help:"time range to get incidents for" default:"2006-01-02"`
 			CSV    string `help:"PagerDuty incidents .csv export to use"`
 		} `cmd:"" help:"get incidents from pagerduty API or csv"`
 		Oncall struct {
