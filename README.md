@@ -42,11 +42,12 @@ Usage: pd incidents
 get incidents from pagerduty API or csv
 
 Flags:
-  -h, --help              Show context-sensitive help.
+  -h, --help                  Show context-sensitive help.
 
-      --team-id=STRING    PagerDuty team ID to get incidents for
-      --since="168h"      time range to get incidents for
-      --csv=STRING        PagerDuty incidents .csv export to use
+      --team-id=STRING        PagerDuty team ID to get incidents for
+      --since="2006-01-02"    time range to get incidents for
+      --csv=STRING            PagerDuty incidents .csv export to use
+
 
 % pd incidents --team-id=P789 --since=2023-10-30
 |                      INCIDENT              | DESCRIPTION                         |             CREATED              | LAST UPDATE                      | DURATION |
