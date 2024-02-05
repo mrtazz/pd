@@ -17,7 +17,7 @@ pd — command line helper tools for PagerDuty
 
 # SYNOPSIS
 
-`pd incidents --teamid=<id> --since=<STRING>`
+`pd incidents --teamid=<id> --since=<STRING> --base-url=<URL>`
 
 `pd oncall --user-id=STRING --since=STRING`
 

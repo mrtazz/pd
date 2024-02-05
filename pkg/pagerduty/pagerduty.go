@@ -26,9 +26,9 @@ const (
 	resolvedAtHeader     = "resolved_on"
 )
 
-var (
+const (
 	// BaseURL of the pagerduty account
-	BaseURL = "https://pagerduty.com"
+	defaultBaseURL = "https://pagerduty.com"
 )
 
 // Incident represents a PD incident
@@ -37,11 +37,12 @@ type Incident struct {
 	Description string
 	CreatedAt   time.Time
 	ResolvedAt  time.Time
+	BaseURL     string
 }
 
 // URL returns the incident URL
 func (i Incident) URL() string {
-	return fmt.Sprintf("%s/incidents/%d", BaseURL, i.Number)
+	return fmt.Sprintf("%s/incidents/%d", i.BaseURL, i.Number)
 }
 
 // Duration returns the format duration of the incident
@@ -61,10 +62,12 @@ type OncallShift struct {
 type Client interface {
 	GetIncidentsForTeam(teamID string, since time.Time) ([]Incident, error)
 	GetOncallShiftsForUser(userID string, since time.Time) ([]OncallShift, error)
+	WithBaseURL(url string) Client
 }
 
 type defaultClient struct {
-	api *pdApi.Client
+	api     *pdApi.Client
+	baseURL string
 }
 
 // New returns a pagerduty client
@@ -72,6 +75,12 @@ func New(token string) Client {
 	return defaultClient{
 		api: pdApi.NewClient(token),
 	}
+}
+
+func (d defaultClient) WithBaseURL(url string) Client {
+	newClient := d
+	newClient.baseURL = url
+	return newClient
 }
 
 func (d defaultClient) GetIncidentsForTeam(teamID string, since time.Time) ([]Incident, error) {
@@ -93,6 +102,7 @@ func (d defaultClient) GetIncidentsForTeam(teamID string, since time.Time) ([]In
 		thisIncident := Incident{
 			Number:      int(inc.IncidentNumber),
 			Description: inc.Description,
+			BaseURL:     d.baseURL,
 		}
 		if thisIncident.CreatedAt, err = time.Parse(pdAPITimestampLayout, inc.CreatedAt); err != nil {
 			log.Println("error parsing created at: " + err.Error())
