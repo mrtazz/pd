@@ -24,9 +24,10 @@ var (
 	version = "0.1.1"
 	flags   struct {
 		Incidents struct {
-			TeamID string `help:"PagerDuty team ID to get incidents for"`
-			Since  string `help:"time range to get incidents for" default:"2006-01-02"`
-			CSV    string `help:"PagerDuty incidents .csv export to use"`
+			TeamID  string `help:"PagerDuty team ID to get incidents for"`
+			BaseURL string `help:"Base URL for pagerduty (e.g. https://company.pagerduty.com"`
+			Since   string `help:"time range to get incidents for" default:"2006-01-02"`
+			CSV     string `help:"PagerDuty incidents .csv export to use"`
 		} `cmd:"" help:"get incidents from pagerduty API or csv"`
 		Oncall struct {
 			UserID string `required:"" help:"PagerDuty user ID to get incidents for"`
@@ -104,6 +105,10 @@ func getOnCallTimes() {
 func incidentsFromAPI() {
 	token := os.Getenv(pdEnvToken)
 	client := pagerduty.New(token)
+
+	if flags.Incidents.BaseURL != "" {
+		client = client.WithBaseURL(flags.Incidents.BaseURL)
+	}
 
 	since, err := time.Parse(flagTimestampLayout, flags.Incidents.Since)
 	if err != nil {

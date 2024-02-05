@@ -45,8 +45,10 @@ Flags:
   -h, --help                  Show context-sensitive help.
 
       --team-id=STRING        PagerDuty team ID to get incidents for
+      --base-url=STRING       Base URL for pagerduty (e.g.  https://company.pagerduty.com
       --since="2006-01-02"    time range to get incidents for
       --csv=STRING            PagerDuty incidents .csv export to use
+
 
 
 % pd incidents --team-id=P789 --since=2023-10-30
