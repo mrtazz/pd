@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -28,7 +29,8 @@ const (
 
 const (
 	// BaseURL of the pagerduty account
-	defaultBaseURL = "https://pagerduty.com"
+	defaultBaseURL  = "https://pagerduty.com"
+	paginationLimit = 100
 )
 
 // Incident represents a PD incident
@@ -87,33 +89,45 @@ func (d defaultClient) GetIncidentsForTeam(teamID string, since time.Time) ([]In
 
 	ctx := context.Background()
 
-	ret := make([]Incident, 0, 25)
+	ret := make([]Incident, 0, 100)
 
+	fetchMore := true
 	var opts pdApi.ListIncidentsOptions
 	opts.TeamIDs = []string{teamID}
 	opts.Statuses = []string{"triggered", "acknowledged", "resolved"}
 	opts.Since = since.Format(pdAPITimestampLayout)
-	resp, err := d.api.ListIncidentsWithContext(ctx, opts)
-	if err != nil {
-		return ret, err
+	opts.Limit = paginationLimit
+
+	for fetchMore {
+		resp, err := d.api.ListIncidentsWithContext(ctx, opts)
+		if err != nil {
+			return ret, err
+		}
+		fetchMore = resp.More
+		opts.Offset += opts.Limit
+
+		for _, inc := range resp.Incidents {
+			thisIncident := Incident{
+				Number:      int(inc.IncidentNumber),
+				Description: inc.Description,
+				BaseURL:     d.baseURL,
+			}
+			if thisIncident.CreatedAt, err = time.Parse(pdAPITimestampLayout, inc.CreatedAt); err != nil {
+				log.Println("error parsing created at: " + err.Error())
+				continue
+			}
+			if thisIncident.ResolvedAt, err = time.Parse(pdAPITimestampLayout, inc.LastStatusChangeAt); err != nil {
+				log.Println("error parsing updated at: " + err.Error())
+				continue
+			}
+			ret = append(ret, thisIncident)
+		}
 	}
 
-	for _, inc := range resp.Incidents {
-		thisIncident := Incident{
-			Number:      int(inc.IncidentNumber),
-			Description: inc.Description,
-			BaseURL:     d.baseURL,
-		}
-		if thisIncident.CreatedAt, err = time.Parse(pdAPITimestampLayout, inc.CreatedAt); err != nil {
-			log.Println("error parsing created at: " + err.Error())
-			continue
-		}
-		if thisIncident.ResolvedAt, err = time.Parse(pdAPITimestampLayout, inc.LastStatusChangeAt); err != nil {
-			log.Println("error parsing updated at: " + err.Error())
-			continue
-		}
-		ret = append(ret, thisIncident)
-	}
+	// sort incidents by creation date
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].CreatedAt.Before(ret[j].CreatedAt)
+	})
 
 	return ret, nil
 }
