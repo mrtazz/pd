@@ -2,6 +2,7 @@ package formatter
 
 import (
 	"bytes"
+	"encoding/csv"
 	"fmt"
 	"time"
 
@@ -25,6 +26,38 @@ func RenderMarkdownTable(header []string, data [][]string) (string, error) {
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 	table.SetCenterSeparator("|")
 	table.SetAutoWrapText(false)
+
+	table.AppendBulk(data)
+	table.Render()
+
+	return buff.String(), nil
+}
+
+// RenderCSV renders the given data as a comma separated output
+func RenderCSV(header []string, data [][]string) (string, error) {
+	var buff bytes.Buffer
+	w := csv.NewWriter(&buff)
+
+	w.Write(header)
+	w.WriteAll(data)
+
+	if err := w.Error(); err != nil {
+		return "", err
+	}
+	return buff.String(), nil
+}
+
+func RenderCSVTablewriter(header []string, data [][]string) (string, error) {
+	var buff bytes.Buffer
+	table := tablewriter.NewWriter(&buff)
+	table.SetHeader(header)
+	table.SetCenterSeparator(",")
+	table.SetColumnSeparator(",")
+	table.SetRowSeparator("")
+	table.SetAutoWrapText(false)
+	table.SetHeaderLine(false)
+	table.SetAutoWrapText(false)
+	table.SetNoWhiteSpace(true)
 
 	table.AppendBulk(data)
 	table.Render()

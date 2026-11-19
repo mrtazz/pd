@@ -17,17 +17,21 @@ import (
 const (
 	pdEnvToken = "PD_TOKEN"
 
-	flagTimestampLayout = "2006-01-02"
+	flagTimestampLayout        = "2006-01-02"
+	oncallShiftTimestampLayout = "2006-01-02T15:04"
 )
 
 var (
 	version = "0.1.1"
 	flags   struct {
 		Incidents struct {
-			TeamID  string `help:"PagerDuty team ID to get incidents for"`
-			BaseURL string `help:"Base URL for pagerduty (e.g. https://company.pagerduty.com"`
-			Since   string `help:"time range to get incidents for" default:"2006-01-02"`
-			CSV     string `help:"PagerDuty incidents .csv export to use"`
+			TeamID   string `help:"PagerDuty team ID to get incidents for"`
+			BaseURL  string `help:"Base URL for pagerduty (e.g. https://company.pagerduty.com"`
+			Since    string `help:"time range start to get incidents for" default:"2006-01-02"`
+			Until    string `help:"time range end to get incidents for" default:"2006-02-02"`
+			CSV      string `help:"PagerDuty incidents .csv export to use"`
+			Format   string `help:"output format for the incident list (markdown or csv)" default:"markdown"`
+			Priority string `help:"which priority to list incidents for (empty means all priorities)" default:""`
 		} `cmd:"" help:"get incidents from pagerduty API or csv"`
 		Oncall struct {
 			UserID string `required:"" help:"PagerDuty user ID to get incidents for"`
@@ -91,8 +95,8 @@ func getOnCallTimes() {
 	for _, o := range oncalls {
 		shiftsForTable = append(shiftsForTable,
 			[]string{
-				o.Start.Format(flagTimestampLayout),
-				o.End.Format(flagTimestampLayout),
+				o.Start.Format(oncallShiftTimestampLayout),
+				o.End.Format(oncallShiftTimestampLayout),
 				o.Schedule},
 		)
 	}
@@ -115,12 +119,29 @@ func incidentsFromAPI() {
 		log.Println(err)
 		return
 	}
-	incidents, err := client.GetIncidentsForTeam(flags.Incidents.TeamID, since)
+	until, err := time.Parse(flagTimestampLayout, flags.Incidents.Until)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	printIncidentsAsMarkdownTable(incidents)
+	if until.Before(since) {
+		// if we have an invalid time we default to a timespan of 30 days
+		until = since.Add(30 * 24 * time.Hour)
+	}
+	incidents, err := client.GetIncidentsForTeam(flags.Incidents.TeamID, since, until, flags.Incidents.Priority)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	switch flags.Incidents.Format {
+	case "markdown":
+		printIncidentsAsMarkdownTable(incidents)
+	case "csv":
+		printIncidentsAsCSV(incidents)
+	default:
+		log.Printf("unknown output format: '%s'\n", flags.Incidents.Format)
+
+	}
 }
 
 func printIncidentsAsMarkdownTable(incidents []pagerduty.Incident) {
@@ -128,15 +149,37 @@ func printIncidentsAsMarkdownTable(incidents []pagerduty.Incident) {
 
 	for _, i := range incidents {
 		incidentsForTable = append(incidentsForTable,
-			[]string{fmt.Sprintf("[%d](%s)", i.Number, i.URL()), i.Description,
+			[]string{fmt.Sprintf("[%d](%s)", i.Number, i.URL()),
+				i.Priority,
+				i.Description,
 				formatter.FormatTimeWithUTCAndLocal(i.CreatedAt),
 				formatter.FormatTimeWithUTCAndLocal(i.ResolvedAt), i.Duration()},
 		)
 	}
 
-	header := []string{"Incident", "Description", "Created", "Last Update", "Duration"}
+	header := []string{"Incident", "Priority", "Description", "Created", "Last Update", "Duration"}
 
 	text, _ := formatter.RenderMarkdownTable(header, incidentsForTable)
+
+	fmt.Println(text)
+}
+
+func printIncidentsAsCSV(incidents []pagerduty.Incident) {
+	incidentsForTable := make([][]string, 0, len(incidents))
+
+	for _, i := range incidents {
+		incidentsForTable = append(incidentsForTable,
+			[]string{fmt.Sprintf("[%d](%s)", i.Number, i.URL()),
+				i.Priority,
+				i.Description,
+				formatter.FormatTimeWithUTCAndLocal(i.CreatedAt),
+				formatter.FormatTimeWithUTCAndLocal(i.ResolvedAt), i.Duration()},
+		)
+	}
+
+	header := []string{"Incident", "Priority", "Description", "Created", "Last Update", "Duration"}
+
+	text, _ := formatter.RenderCSV(header, incidentsForTable)
 
 	fmt.Println(text)
 }
