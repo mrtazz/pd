@@ -37,6 +37,7 @@ const (
 type Incident struct {
 	Number      int
 	Description string
+	Priority    string
 	CreatedAt   time.Time
 	ResolvedAt  time.Time
 	BaseURL     string
@@ -62,7 +63,7 @@ type OncallShift struct {
 
 // Client is the interface to interact with the PD API
 type Client interface {
-	GetIncidentsForTeam(teamID string, since time.Time) ([]Incident, error)
+	GetIncidentsForTeam(teamID string, since time.Time, until time.Time, priority string) ([]Incident, error)
 	GetOncallShiftsForUser(userID string, since time.Time) ([]OncallShift, error)
 	WithBaseURL(url string) Client
 }
@@ -85,7 +86,7 @@ func (d defaultClient) WithBaseURL(url string) Client {
 	return newClient
 }
 
-func (d defaultClient) GetIncidentsForTeam(teamID string, since time.Time) ([]Incident, error) {
+func (d defaultClient) GetIncidentsForTeam(teamID string, since time.Time, until time.Time, priority string) ([]Incident, error) {
 
 	ctx := context.Background()
 
@@ -96,6 +97,7 @@ func (d defaultClient) GetIncidentsForTeam(teamID string, since time.Time) ([]In
 	opts.TeamIDs = []string{teamID}
 	opts.Statuses = []string{"triggered", "acknowledged", "resolved"}
 	opts.Since = since.Format(pdAPITimestampLayout)
+	opts.Until = until.Format(pdAPITimestampLayout)
 	opts.Limit = paginationLimit
 
 	for fetchMore {
@@ -111,6 +113,15 @@ func (d defaultClient) GetIncidentsForTeam(teamID string, since time.Time) ([]In
 				Number:      int(inc.IncidentNumber),
 				Description: inc.Description,
 				BaseURL:     d.baseURL,
+				Priority:    "P1",
+			}
+			if inc.Priority != nil {
+				// filter out priority if we have given one
+				if priority != "" && inc.Priority.Summary != priority {
+					continue
+				} else {
+					thisIncident.Priority = inc.Priority.Summary
+				}
 			}
 			if thisIncident.CreatedAt, err = time.Parse(pdAPITimestampLayout, inc.CreatedAt); err != nil {
 				log.Println("error parsing created at: " + err.Error())
